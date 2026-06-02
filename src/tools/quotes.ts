@@ -8,15 +8,16 @@ export function registerQuoteTools(server: McpServer): void {
     'Get real-time quotes for one or more symbols',
     {
       symbols: z.string().describe("Comma-separated list of symbols, e.g. 'AAPL,MSFT,TSLA'"),
-      fields: z.string().optional().describe("Fields to include, e.g. 'quote,fundamental'"),
       indicative: z.boolean().optional().describe('Include indicative symbol quotes for all ETF constituents'),
     },
-    async ({ symbols, fields, indicative }) => {
-      const queryParams: Record<string, unknown> = { symbols }
-      if (fields) queryParams['fields'] = fields
-      if (indicative !== undefined) queryParams['indicative'] = indicative
-
-      const quotes = await schwab.marketData.quotes.getQuotes({ queryParams })
+    async ({ symbols, indicative }) => {
+      const symbolList = symbols.split(',').map(s => s.trim())
+      const quotes = await schwab.marketData.quotes.getQuotes({
+        queryParams: {
+          symbols: symbolList,
+          ...(indicative !== undefined && { indicative }),
+        },
+      })
       return { content: [{ type: 'text', text: JSON.stringify(quotes, null, 2) }] }
     }
   )

@@ -32,15 +32,15 @@ export function registerOrderTools(server: McpServer): void {
       status: z.string().optional().describe('Filter by order status (e.g. FILLED, PENDING_ACTIVATION)'),
     },
     async ({ accountNumber, maxResults, fromEnteredTime, toEnteredTime, status }) => {
-      const queryParams: Record<string, unknown> = {}
-      if (maxResults) queryParams['maxResults'] = maxResults
-      if (fromEnteredTime) queryParams['fromEnteredTime'] = fromEnteredTime
-      if (toEnteredTime) queryParams['toEnteredTime'] = toEnteredTime
-      if (status) queryParams['status'] = status
-
-      const orders = await schwab.trader.orders.getOrdersByAccount({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const orders = await (schwab.trader.orders.getOrdersByAccount as any)({
         pathParams: { accountNumber },
-        queryParams,
+        queryParams: {
+          ...(maxResults !== undefined && { maxResults }),
+          ...(fromEnteredTime && { fromEnteredTime }),
+          ...(toEnteredTime && { toEnteredTime }),
+          ...(status && { status }),
+        },
       })
       return { content: [{ type: 'text', text: JSON.stringify(orders, null, 2) }] }
     }
@@ -51,7 +51,7 @@ export function registerOrderTools(server: McpServer): void {
     'Get a specific order by ID',
     {
       accountNumber: z.string().describe('Account number'),
-      orderId: z.string().describe('Order ID'),
+      orderId: z.number().int().describe('Order ID (numeric)'),
     },
     async ({ accountNumber, orderId }) => {
       const order = await schwab.trader.orders.getOrderByOrderId({
@@ -69,11 +69,13 @@ export function registerOrderTools(server: McpServer): void {
       order: OrderBodySchema,
     },
     async ({ accountNumber, order }) => {
-      const result = await schwab.trader.orders.placeOrderForAccount({
+      // placeOrderForAccount returns void (201 + Location header); body typed as any for flexibility
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (schwab.trader.orders.placeOrderForAccount as unknown as (p: { pathParams: { accountNumber: string }, body: unknown }) => Promise<void>)({
         pathParams: { accountNumber },
         body: order,
       })
-      return { content: [{ type: 'text', text: JSON.stringify(result ?? { status: 'order placed' }, null, 2) }] }
+      return { content: [{ type: 'text', text: JSON.stringify({ status: 'order placed' }) }] }
     }
   )
 
@@ -82,7 +84,7 @@ export function registerOrderTools(server: McpServer): void {
     'Cancel an existing order',
     {
       accountNumber: z.string().describe('Account number'),
-      orderId: z.string().describe('Order ID to cancel'),
+      orderId: z.number().int().describe('Order ID (numeric)'),
     },
     async ({ accountNumber, orderId }) => {
       await schwab.trader.orders.cancelOrder({
@@ -97,15 +99,16 @@ export function registerOrderTools(server: McpServer): void {
     'Replace (cancel and re-submit) an existing order with new parameters',
     {
       accountNumber: z.string().describe('Account number'),
-      orderId: z.string().describe('Order ID to replace'),
+      orderId: z.number().int().describe('Order ID (numeric)'),
       order: OrderBodySchema,
     },
     async ({ accountNumber, orderId, order }) => {
-      const result = await schwab.trader.orders.replaceOrder({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (schwab.trader.orders.replaceOrder as unknown as (p: { pathParams: { accountNumber: string, orderId: number }, body: unknown }) => Promise<void>)({
         pathParams: { accountNumber, orderId },
         body: order,
       })
-      return { content: [{ type: 'text', text: JSON.stringify(result ?? { status: 'order replaced' }, null, 2) }] }
+      return { content: [{ type: 'text', text: JSON.stringify({ status: 'order replaced', orderId }) }] }
     }
   )
 }

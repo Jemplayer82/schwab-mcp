@@ -27,8 +27,8 @@ export const schwab = createApiClient({
   },
 })
 
-export function getAuthUrl(): string {
-  const { authUrl } = auth.getAuthorizationUrl()
+export async function getAuthUrl(): Promise<string> {
+  const { authUrl } = await auth.getAuthorizationUrl()
   return authUrl
 }
 

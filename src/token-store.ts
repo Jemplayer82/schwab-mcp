@@ -1,17 +1,10 @@
 import { readFile, writeFile, mkdir } from 'fs/promises'
 import { dirname } from 'path'
+import type { TokenData } from '@sudowealth/schwab-api'
+
+export type { TokenData }
 
 const TOKEN_PATH = process.env.TOKEN_PATH ?? '/data/tokens.json'
-
-export interface TokenData {
-  accessToken: string
-  refreshToken?: string
-  expiresAt?: number
-  tokenType?: string
-  scope?: string
-  idToken?: string
-  [key: string]: unknown
-}
 
 export async function loadTokens(): Promise<TokenData | null> {
   try {

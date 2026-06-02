@@ -8,8 +8,8 @@ const app = express()
 app.use(express.json())
 
 // OAuth: initiate flow
-app.get('/auth', (_req, res) => {
-  const url = getAuthUrl()
+app.get('/auth', async (_req, res) => {
+  const url = await getAuthUrl()
   res.redirect(url)
 })
 
