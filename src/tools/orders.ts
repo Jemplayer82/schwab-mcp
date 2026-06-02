@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { schwab } from '../schwab-client.js'
+import { getSchwab } from '../schwab-client.js'
 
 const OrderLegSchema = z.object({
   instruction: z.enum(['BUY', 'SELL', 'BUY_TO_COVER', 'SELL_SHORT', 'BUY_TO_OPEN', 'BUY_TO_CLOSE', 'SELL_TO_OPEN', 'SELL_TO_CLOSE']),
@@ -33,7 +33,7 @@ export function registerOrderTools(server: McpServer): void {
     },
     async ({ accountNumber, maxResults, fromEnteredTime, toEnteredTime, status }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const orders = await (schwab.trader.orders.getOrdersByAccount as any)({
+      const orders = await (getSchwab().trader.orders.getOrdersByAccount as any)({
         pathParams: { accountNumber },
         queryParams: {
           ...(maxResults !== undefined && { maxResults }),
@@ -54,7 +54,7 @@ export function registerOrderTools(server: McpServer): void {
       orderId: z.number().int().describe('Order ID (numeric)'),
     },
     async ({ accountNumber, orderId }) => {
-      const order = await schwab.trader.orders.getOrderByOrderId({
+      const order = await getSchwab().trader.orders.getOrderByOrderId({
         pathParams: { accountNumber, orderId },
       })
       return { content: [{ type: 'text', text: JSON.stringify(order, null, 2) }] }
@@ -71,7 +71,7 @@ export function registerOrderTools(server: McpServer): void {
     async ({ accountNumber, order }) => {
       // placeOrderForAccount returns void (201 + Location header); body typed as any for flexibility
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (schwab.trader.orders.placeOrderForAccount as unknown as (p: { pathParams: { accountNumber: string }, body: unknown }) => Promise<void>)({
+      await (getSchwab().trader.orders.placeOrderForAccount as unknown as (p: { pathParams: { accountNumber: string }, body: unknown }) => Promise<void>)({
         pathParams: { accountNumber },
         body: order,
       })
@@ -87,7 +87,7 @@ export function registerOrderTools(server: McpServer): void {
       orderId: z.number().int().describe('Order ID (numeric)'),
     },
     async ({ accountNumber, orderId }) => {
-      await schwab.trader.orders.cancelOrder({
+      await getSchwab().trader.orders.cancelOrder({
         pathParams: { accountNumber, orderId },
       })
       return { content: [{ type: 'text', text: JSON.stringify({ status: 'cancelled', orderId }) }] }
@@ -104,7 +104,7 @@ export function registerOrderTools(server: McpServer): void {
     },
     async ({ accountNumber, orderId, order }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (schwab.trader.orders.replaceOrder as unknown as (p: { pathParams: { accountNumber: string, orderId: number }, body: unknown }) => Promise<void>)({
+      await (getSchwab().trader.orders.replaceOrder as unknown as (p: { pathParams: { accountNumber: string, orderId: number }, body: unknown }) => Promise<void>)({
         pathParams: { accountNumber, orderId },
         body: order,
       })

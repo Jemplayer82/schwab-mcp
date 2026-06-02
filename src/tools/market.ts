@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { schwab } from '../schwab-client.js'
+import { getSchwab } from '../schwab-client.js'
 
 export function registerMarketTools(server: McpServer): void {
   server.tool(
@@ -14,7 +14,7 @@ export function registerMarketTools(server: McpServer): void {
         .describe('Search projection type'),
     },
     async ({ symbol, projection }) => {
-      const results = await schwab.marketData.instruments.getInstruments({
+      const results = await getSchwab().marketData.instruments.getInstruments({
         queryParams: { symbol, projection },
       })
       return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] }
@@ -35,7 +35,7 @@ export function registerMarketTools(server: McpServer): void {
       needExtendedHoursData: z.boolean().optional().describe('Include pre/post market data'),
     },
     async ({ symbol, periodType, period, frequencyType, frequency, startDate, endDate, needExtendedHoursData }) => {
-      const history = await schwab.marketData.priceHistory.getPriceHistory({
+      const history = await getSchwab().marketData.priceHistory.getPriceHistory({
         queryParams: {
           symbol,
           frequency: frequency ?? 1,
@@ -61,7 +61,7 @@ export function registerMarketTools(server: McpServer): void {
     async ({ markets, date }) => {
       type Market = 'equity' | 'option' | 'bond' | 'future' | 'forex'
       const marketList = markets.split(',').map(m => m.trim() as Market)
-      const hours = await schwab.marketData.marketHours.getMarketHours({
+      const hours = await getSchwab().marketData.marketHours.getMarketHours({
         queryParams: {
           markets: marketList,
           ...(date && { date: new Date(date) }),
@@ -80,7 +80,7 @@ export function registerMarketTools(server: McpServer): void {
       frequency: z.number().int().optional().describe('Frequency in minutes (0 for all-day)'),
     },
     async ({ symbolId, sort, frequency }) => {
-      const movers = await schwab.marketData.movers.getMovers({
+      const movers = await getSchwab().marketData.movers.getMovers({
         pathParams: { symbol_id: symbolId },
         queryParams: {
           sort: sort ?? 'up',
@@ -106,7 +106,7 @@ export function registerMarketTools(server: McpServer): void {
       expMonth: z.enum(['ALL', 'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']).optional().describe('Expiration month'),
     },
     async ({ symbol, contractType, strikeCount, includeUnderlyingQuote, strategy, range, fromDate, toDate, expMonth }) => {
-      const chain = await schwab.marketData.options.getOptionChain({
+      const chain = await getSchwab().marketData.options.getOptionChain({
         queryParams: {
           symbol,
           ...(contractType && { contractType }),
@@ -130,7 +130,7 @@ export function registerMarketTools(server: McpServer): void {
       symbol: z.string().describe('Underlying symbol, e.g. AAPL'),
     },
     async ({ symbol }) => {
-      const chain = await schwab.marketData.options.getOptionExpirationChain({
+      const chain = await getSchwab().marketData.options.getOptionExpirationChain({
         queryParams: { symbol },
       })
       return { content: [{ type: 'text', text: JSON.stringify(chain, null, 2) }] }

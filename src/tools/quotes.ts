@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { schwab } from '../schwab-client.js'
+import { getSchwab } from '../schwab-client.js'
 
 export function registerQuoteTools(server: McpServer): void {
   server.tool(
@@ -12,7 +12,7 @@ export function registerQuoteTools(server: McpServer): void {
     },
     async ({ symbols, indicative }) => {
       const symbolList = symbols.split(',').map(s => s.trim())
-      const quotes = await schwab.marketData.quotes.getQuotes({
+      const quotes = await getSchwab().marketData.quotes.getQuotes({
         queryParams: {
           symbols: symbolList,
           ...(indicative !== undefined && { indicative }),

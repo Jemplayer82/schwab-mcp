@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { schwab } from '../schwab-client.js'
+import { getSchwab } from '../schwab-client.js'
 
 export function registerAccountTools(server: McpServer): void {
   server.tool(
@@ -10,7 +10,7 @@ export function registerAccountTools(server: McpServer): void {
       fields: z.string().optional().describe("Comma-separated fields to include, e.g. 'positions'"),
     },
     async ({ fields }) => {
-      const accounts = await schwab.trader.accounts.getAccounts(
+      const accounts = await getSchwab().trader.accounts.getAccounts(
         fields ? { queryParams: { fields } } : undefined
       )
       return { content: [{ type: 'text', text: JSON.stringify(accounts, null, 2) }] }
@@ -22,7 +22,7 @@ export function registerAccountTools(server: McpServer): void {
     'Get the list of account numbers and their encrypted hashes (needed for order placement)',
     {},
     async () => {
-      const accounts = await schwab.trader.accounts.getAccounts()
+      const accounts = await getSchwab().trader.accounts.getAccounts()
       const numbers = Array.isArray(accounts)
         ? accounts.map((a: Record<string, unknown>) => ({
             accountNumber: (a['securitiesAccount'] as Record<string, unknown>)?.['accountNumber'],

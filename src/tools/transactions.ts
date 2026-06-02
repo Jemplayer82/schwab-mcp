@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { schwab } from '../schwab-client.js'
+import { getSchwab } from '../schwab-client.js'
 
 const TransactionType = z.enum([
   'TRADE', 'RECEIVE_AND_DELIVER', 'DIVIDEND_OR_INTEREST',
@@ -21,7 +21,7 @@ export function registerTransactionTools(server: McpServer): void {
       symbol: z.string().optional().describe('Filter by symbol'),
     },
     async ({ accountNumber, types, startDate, endDate, symbol }) => {
-      const txns = await schwab.trader.transactions.getTransactions({
+      const txns = await getSchwab().trader.transactions.getTransactions({
         pathParams: { accountNumber },
         queryParams: {
           types,
