@@ -1,7 +1,7 @@
 import express from 'express'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { createServer } from './mcp.js'
-import { exchangeCode, getAuthUrl } from './schwab-client.js'
+import { exchangeCode, getAuthUrl, ensureFreshToken } from './schwab-client.js'
 import { hasTokens } from './token-store.js'
 
 const app = express()
@@ -37,6 +37,11 @@ app.get('/health', async (_req, res) => {
 
 // MCP streamable HTTP endpoint — new server per request (stateless)
 app.post('/mcp', async (req, res) => {
+  // Refresh the ~30-minute Schwab access token (using the stored refresh token)
+  // before any tool runs, so a run after the token expired doesn't 401.
+  await ensureFreshToken().catch((err) =>
+    console.error('[schwab-mcp] pre-request token refresh failed:', err)
+  )
   const server = createServer()
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
 
@@ -62,3 +67,14 @@ app.listen(port, () => {
   console.log(`  OAuth callback: GET  http://localhost:${port}/callback`)
   console.log(`  Health:         GET  http://localhost:${port}/health`)
 })
+
+// Keep the Schwab access token warm so a scheduled/portfolio run never hits an
+// expired ~30-minute access token. Schwab still requires a full re-auth at /auth
+// every 7 days — this only removes the every-~30-minutes re-authorization.
+const REFRESH_INTERVAL_MS = 15 * 60_000
+setInterval(() => {
+  void ensureFreshToken().catch((err) =>
+    console.error('[schwab-mcp] scheduled token refresh failed:', err)
+  )
+}, REFRESH_INTERVAL_MS)
+void ensureFreshToken().catch(() => {})
