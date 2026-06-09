@@ -42,6 +42,7 @@ app.post('/mcp', async (req, res) => {
   await ensureFreshToken().catch((err) =>
     console.error('[schwab-mcp] pre-request token refresh failed:', err)
   )
+
   const server = createServer()
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
 

@@ -2,6 +2,9 @@ import { createSchwabAuth, createApiClient } from '@sudowealth/schwab-api'
 import { loadTokens, saveTokens } from './token-store.js'
 import type { TokenData } from './token-store.js'
 
+// Minimum time remaining on an access token before we consider it "stale" and refresh
+const REFRESH_SKEW_MS = 5 * 60_000
+
 type SchwabClient = Awaited<ReturnType<typeof createApiClient>>
 
 let _auth: ReturnType<typeof createSchwabAuth> | null = null
@@ -58,8 +61,6 @@ export async function getAuthUrl(): Promise<string> {
 export async function exchangeCode(code: string): Promise<void> {
   await getAuth().exchangeCode(code)
 }
-
-const REFRESH_SKEW_MS = 5 * 60_000
 
 function isFresh(t: TokenData | null): boolean {
   return !!t?.expiresAt && t.expiresAt - Date.now() > REFRESH_SKEW_MS
