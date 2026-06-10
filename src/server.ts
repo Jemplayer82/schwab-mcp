@@ -72,7 +72,7 @@ app.listen(port, () => {
 // Keep the Schwab access token warm so a scheduled/portfolio run never hits an
 // expired ~30-minute access token. Schwab still requires a full re-auth at /auth
 // every 7 days — this only removes the every-~30-minutes re-authorization.
-const REFRESH_INTERVAL_MS = 15 * 60_000
+const REFRESH_INTERVAL_MS = 10 * 60_000
 setInterval(() => {
   void ensureFreshToken().catch((err) =>
     console.error('[schwab-mcp] scheduled token refresh failed:', err)
