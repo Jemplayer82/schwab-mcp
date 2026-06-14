@@ -1,20 +1,20 @@
 # schwab-mcp
 
-A Model Context Protocol (MCP) server that gives Claude and other MCP clients direct access to your Charles Schwab brokerage account. Query live quotes, account positions, orders, transaction history, option chains, and more — all through natural language.
+> A Model Context Protocol (MCP) server that gives Claude and other MCP clients **direct access to your Charles Schwab brokerage account**. Query live quotes, account positions, orders, transaction history, option chains, and more — all through natural language.
 
-**This is a fork of [sudowealth/schwab-mcp](https://github.com/sudowealth/schwab-mcp).** The core MCP server, tool definitions, and Schwab API integration are taken directly from that project. From that base I added Docker packaging, a multi-stage `Dockerfile`, a persistent on-disk token store, automatic background token refresh, and a stateless HTTP transport so it runs cleanly as a long-lived containerized service.
+**🔗 This is a fork of [sudowealth/schwab-mcp](https://github.com/sudowealth/schwab-mcp).** The core MCP server, tool definitions, and Schwab API integration are taken directly from that project. From that base I added Docker packaging, a multi-stage `Dockerfile`, a persistent on-disk token store, automatic background token refresh, and a stateless HTTP transport so it runs cleanly as a long-lived containerized service.
 
 ---
 
-## Tools
+## 📚 Tools
 
-### Accounts
+### 💰 Accounts
 | Tool | Description |
 |------|-------------|
 | `getAccounts` | Account balances and positions (`fields=positions` to include holdings) |
 | `getAccountNumbers` | Account numbers and their encrypted hashes (needed for order placement) |
 
-### Quotes & Market Data
+### 📊 Quotes & Market Data
 | Tool | Description |
 |------|-------------|
 | `getQuotes` | Real-time quotes for one or more symbols (e.g. `AAPL,MSFT,TSLA`) |
@@ -23,13 +23,13 @@ A Model Context Protocol (MCP) server that gives Claude and other MCP clients di
 | `getMovers` | Top movers for a market index (`$SPX`, `$DJI`, `NYSE`, `NASDAQ`) |
 | `searchInstruments` | Search for instruments by symbol or description |
 
-### Options
+### 📈 Options
 | Tool | Description |
 |------|-------------|
 | `getOptionChain` | Full option chain with Greeks — filter by contract type, strike range, expiry, strategy |
 | `getOptionExpirationChain` | Available expiration dates for a symbol |
 
-### Orders
+### 📋 Orders
 | Tool | Description |
 |------|-------------|
 | `getOrders` | Order history for an account — filter by date range and status |
@@ -38,23 +38,25 @@ A Model Context Protocol (MCP) server that gives Claude and other MCP clients di
 | `replaceOrder` | Cancel and re-submit an order with updated parameters |
 | `cancelOrder` | Cancel an open order |
 
-### Transactions
+### 💸 Transactions
 | Tool | Description |
 |------|-------------|
 | `getTransactions` | Transaction history — filter by type, date range, and symbol |
 
 ---
 
-## Prerequisites
+## 🚀 Prerequisites
 
 1. **Schwab developer app** — Register at [developer.schwab.com](https://developer.schwab.com). You need a `Client ID`, `Client Secret`, and a registered callback URL.
 2. **Docker** — For the containerized deployment.
 
-The callback URL must match `SCHWAB_REDIRECT_URI` exactly. For local use: `http://localhost:8000/callback`. For a deployed service: your public URL + `/callback`.
+> **⚠️ Note:** The callback URL must match `SCHWAB_REDIRECT_URI` exactly.  
+> Local: `http://localhost:8000/callback`  
+> Deployed: your public URL + `/callback`
 
 ---
 
-## Quick Start
+## 🔧 Quick Start
 
 ### Docker (recommended)
 
@@ -90,21 +92,21 @@ volumes:
   schwab-tokens:
 ```
 
-### Authorize Your Account
+### 🔐 Authorize Your Account
 
 1. Open `http://localhost:8000/auth` (or your deployed URL) in a browser
 2. Log in to Schwab and approve the connection
 3. You'll land on a "Schwab connected!" confirmation page — close it and you're done
 
-Check status at any time: `GET /health` returns `{ status: "ok", authenticated: true/false }`.
+**Status check:** `GET /health` returns `{ status: "ok", authenticated: true/false }`
 
-**Re-auth:** Schwab refresh tokens expire after 7 days. Return to `/auth` once a week to re-authorize. The server handles the ~30-minute access token refresh automatically in the background — you only need to re-auth for the weekly expiry.
+> **Weekly re-auth required** — Schwab refresh tokens expire after 7 days. Return to `/auth` once a week to re-authorize. The server handles the ~30-minute access token refresh automatically — you only need to re-auth for the weekly expiry.
 
 ---
 
-## MCP Client Configuration
+## 🔌 MCP Client Configuration
 
-### Claude Code / Claude Desktop
+#### Claude Code / Claude Desktop
 
 ```json
 {
@@ -119,7 +121,7 @@ Check status at any time: `GET /health` returns `{ status: "ok", authenticated: 
 
 Adjust the URL if running on a remote host or different port.
 
-### Claude Code CLI
+#### Claude Code CLI
 
 ```bash
 claude mcp add schwab --transport http http://localhost:8000/mcp
@@ -127,7 +129,7 @@ claude mcp add schwab --transport http http://localhost:8000/mcp
 
 ---
 
-## Environment Variables
+## ⚙️ Environment Variables
 
 | Variable | Required | Description |
 |---|---|---|
@@ -141,7 +143,7 @@ Token storage defaults to the `/data` volume so tokens survive container restart
 
 ---
 
-## Development
+## 💻 Development
 
 ```bash
 npm install
@@ -152,17 +154,21 @@ npm start            # run compiled output
 
 ---
 
-## Notes
+## 📝 Notes
 
-- **Rate limiting** — 100 requests per 60-second window (Schwab API limit).
-- **Retries** — Failed requests retry up to 3 times with exponential backoff.
-- **Stateless transport** — Each `POST /mcp` request creates and tears down its own MCP server instance. No session state is held in memory between requests.
-- **Token refresh** — Access tokens are refreshed every 10 minutes in the background so API calls never fail due to token expiry between the ~30-minute Schwab access token windows.
+- **Rate limiting** — 100 requests per 60-second window (Schwab API limit)
+- **Retries** — Failed requests retry up to 3 times with exponential backoff
+- **Stateless transport** — Each `POST /mcp` request creates and tears down its own MCP server instance. No session state is held in memory between requests
+- **Token refresh** — Access tokens are refreshed every 10 minutes in the background so API calls never fail due to token expiry between the ~30-minute Schwab access token windows
 
 ---
 
-## Credits
+## 🙏 Credits
 
 - **[sudowealth/schwab-mcp](https://github.com/sudowealth/schwab-mcp)** — Original project this fork is based on. Core MCP server, tool definitions, and Schwab API integration come from there.
 - [`@sudowealth/schwab-api`](https://www.npmjs.com/package/@sudowealth/schwab-api) — TypeScript Schwab API client and OAuth implementation
 - [Anthropic MCP SDK](https://github.com/modelcontextprotocol/typescript-sdk) — MCP server transport layer
+
+---
+
+**Use at your own risk.** Not financial advice.
