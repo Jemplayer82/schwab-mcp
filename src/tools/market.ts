@@ -1,6 +1,47 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { getSchwab } from '../schwab-client.js'
+import { loadTokens } from '../token-store.js'
+
+const SCHWAB_API_BASE = 'https://api.schwabapi.com'
+
+/**
+ * Authenticated GET against the Schwab market-data API, bypassing
+ * @sudowealth/schwab-api's response validation.
+ *
+ * ⚠️ Needed because the library's zod response schemas are stricter than what
+ * Schwab actually returns: /marketdata/v1/chains responds with
+ * `underlying: null` and `optionDeliverablesList[].currencyType: null`, but the
+ * schemas mark those `.optional()` (absent-only) rather than `.nullable()`, so
+ * EVERY option-chain call throws "Invalid response data structure" after a
+ * perfectly good fetch. Unfixed upstream as of 2.1.1 (build-only release). The
+ * response is passed through verbatim — this server only JSON-stringifies tool
+ * results anyway, so the validation bought nothing but the outage.
+ *
+ * The access token is fresh here: server.ts runs ensureFreshToken() before
+ * every POST /mcp (and on a 10-minute interval).
+ */
+async function rawMarketDataGet(
+  path: string,
+  params: Record<string, string | number | boolean | undefined>
+): Promise<unknown> {
+  const tokens = await loadTokens()
+  if (!tokens?.accessToken) {
+    throw new Error('Schwab not connected — authorize at /auth first')
+  }
+  const qs = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) qs.set(key, String(value))
+  }
+  const res = await fetch(`${SCHWAB_API_BASE}${path}?${qs}`, {
+    headers: { Authorization: `Bearer ${tokens.accessToken}`, Accept: 'application/json' },
+  })
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`Schwab API ${res.status} for GET ${path}: ${body.slice(0, 300)}`)
+  }
+  return res.json()
+}
 
 export function registerMarketTools(server: McpServer): void {
   server.tool(
@@ -106,18 +147,19 @@ export function registerMarketTools(server: McpServer): void {
       expMonth: z.enum(['ALL', 'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']).optional().describe('Expiration month'),
     },
     async ({ symbol, contractType, strikeCount, includeUnderlyingQuote, strategy, range, fromDate, toDate, expMonth }) => {
-      const chain = await getSchwab().marketData.options.getOptionChain({
-        queryParams: {
-          symbol,
-          ...(contractType && { contractType }),
-          ...(strikeCount !== undefined && { strikeCount }),
-          ...(includeUnderlyingQuote !== undefined && { includeUnderlyingQuote }),
-          ...(strategy && { strategy }),
-          ...(range && { range }),
-          ...(fromDate && { fromDate }),
-          ...(toDate && { toDate }),
-          ...(expMonth && { expMonth }),
-        },
+      // Raw fetch, NOT the library's typed endpoint — see rawMarketDataGet's
+      // header comment (the library's response schema rejects Schwab's live
+      // nulls and made every chain call fail).
+      const chain = await rawMarketDataGet('/marketdata/v1/chains', {
+        symbol,
+        contractType,
+        strikeCount,
+        includeUnderlyingQuote,
+        strategy,
+        range,
+        fromDate,
+        toDate,
+        expMonth,
       })
       return { content: [{ type: 'text', text: JSON.stringify(chain, null, 2) }] }
     }
@@ -130,9 +172,9 @@ export function registerMarketTools(server: McpServer): void {
       symbol: z.string().describe('Underlying symbol, e.g. AAPL'),
     },
     async ({ symbol }) => {
-      const chain = await getSchwab().marketData.options.getOptionExpirationChain({
-        queryParams: { symbol },
-      })
+      // Raw fetch for the same reason as getOptionChain: don't let the
+      // library's over-strict response schema turn a good fetch into an error.
+      const chain = await rawMarketDataGet('/marketdata/v1/expirationchain', { symbol })
       return { content: [{ type: 'text', text: JSON.stringify(chain, null, 2) }] }
     }
   )
