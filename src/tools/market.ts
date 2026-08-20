@@ -55,9 +55,15 @@ export function registerMarketTools(server: McpServer): void {
         .describe('Search projection type'),
     },
     async ({ symbol, projection }) => {
-      const results = await getSchwab().marketData.instruments.getInstruments({
-        queryParams: { symbol, projection },
-      })
+      // Raw fetch, NOT the library's typed endpoint — see rawMarketDataGet's
+      // header comment. The library's response schema is a discriminated
+      // union keyed on assetType where only the (never-actually-returned)
+      // literal assetType "FUNDAMENTAL" carries a `fundamental` field. Real
+      // fundamental-projection results come back as assetType "EQUITY"/"ETF"
+      // etc with a `fundamental` block attached, so the union matches the
+      // EQUITY branch (no `fundamental` field) and Zod silently strips the
+      // whole block — only bare identity fields ever came back.
+      const results = await rawMarketDataGet('/marketdata/v1/instruments', { symbol, projection })
       return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] }
     }
   )
