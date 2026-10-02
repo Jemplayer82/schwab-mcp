@@ -1,72 +1,29 @@
-<img src="assets/fathom-header-banner.svg" alt="Fathom Works — schwab-mcp" width="100%">
+<p align="center"><img src="assets/fathom-header-banner.svg" alt="Fathom Works — schwab-mcp" width="100%"></p>
 
 # `$ schwab-mcp`
 
-> A Model Context Protocol (MCP) server that gives Claude and other MCP clients **direct access to your Charles Schwab brokerage account**. Query live quotes, account positions, orders, transaction history, option chains, and more — all through natural language.
+**Lets an AI assistant such as Claude read your Charles Schwab account: quotes, positions, orders, history and option chains.** You ask in plain English; the assistant fetches the data. It can also place orders if you let it.
 
-**This is a fork of [sudowealth/schwab-mcp](https://github.com/sudowealth/schwab-mcp).** The core MCP server, tool definitions, and Schwab API integration are taken directly from that project. From that base I added Docker packaging, a multi-stage `Dockerfile`, a persistent on-disk token store, automatic background token refresh, and a stateless HTTP transport so it runs cleanly as a long-lived containerized service.
+**In plain terms:** this is a small service you run yourself. It connects your Schwab account to an AI assistant. MCP (Model Context Protocol) is a plug-in standard that lets an AI assistant use outside tools.
 
----
+*A [Fathom Works](https://github.com/Jemplayer82) project. Fork of [sudowealth/schwab-mcp](https://github.com/sudowealth/schwab-mcp), with Docker packaging, a saved token store, automatic token refresh and a stateless HTTP transport added.*
 
-## `[ tools ]`
+> [!WARNING]
+> **Use at your own risk.** Not financial advice.
 
-### ACCOUNTS
+## `[ before you start ]`
 
-| Tool | Description |
-|------|-------------|
-| `getAccounts` | Account balances and positions (`fields=positions` to include holdings) |
-| `getAccountNumbers` | Account numbers and their encrypted hashes (needed for order placement) |
-
-### QUOTES & MARKET DATA
-
-| Tool | Description |
-|------|-------------|
-| `getQuotes` | Real-time quotes for one or more symbols (e.g. `AAPL,MSFT,TSLA`) |
-| `getPriceHistory` | Historical OHLCV data — configurable period, frequency, extended hours |
-| `getMarketHours` | Open/close status for equity, option, bond, future, and forex markets |
-| `getMovers` | Top movers for a market index (`$SPX`, `$DJI`, `NYSE`, `NASDAQ`) |
-| `searchInstruments` | Search for instruments by symbol or description |
-
-### OPTIONS
-
-| Tool | Description |
-|------|-------------|
-| `getOptionChain` | Full option chain with Greeks — filter by contract type, strike range, expiry, strategy |
-| `getOptionExpirationChain` | Available expiration dates for a symbol |
-
-### ORDERS
-
-| Tool | Description |
-|------|-------------|
-| `getOrders` | Order history for an account — filter by date range and status |
-| `getOrder` | Single order by ID |
-| `placeOrder` | Submit a new equity or options order |
-| `replaceOrder` | Cancel and re-submit an order with updated parameters |
-| `cancelOrder` | Cancel an open order |
-
-### TRANSACTIONS
-
-| Tool | Description |
-|------|-------------|
-| `getTransactions` | Transaction history — filter by type, date range, and symbol |
-
----
-
-## `[ prerequisites ]`
-
-1. **Schwab developer app** — Register at [developer.schwab.com](https://developer.schwab.com). You need a `Client ID`, `Client Secret`, and a registered callback URL.
-2. **Docker** — For the containerized deployment.
+1. **Schwab developer app.** Register at [developer.schwab.com](https://developer.schwab.com). You need a `Client ID`, `Client Secret`, and a registered callback URL.
+2. **Docker.** The server runs as a container.
 
 > [!WARNING]
 > The callback URL must match `SCHWAB_REDIRECT_URI` exactly.
 > Local: `http://localhost:8000/callback`
 > Deployed: your public URL + `/callback`
 
----
-
 ## `[ quick start ]`
 
-### docker (recommended)
+Start the server with one Docker command (recommended).
 
 ```bash
 $ docker run -d \
@@ -79,7 +36,7 @@ $ docker run -d \
   ghcr.io/jemplayer82/schwab-mcp:latest
 ```
 
-### docker compose
+Or run it with Docker Compose.
 
 ```yaml
 services:
@@ -100,22 +57,20 @@ volumes:
   schwab-tokens:
 ```
 
-### authorize your account
+## `[ usage ]`
 
-1. Open `http://localhost:8000/auth` (or your deployed URL) in a browser
-2. Log in to Schwab and approve the connection
-3. You'll land on a "Schwab connected!" confirmation page — close it and you're done
+**Authorize your account.** This links the server to Schwab.
 
-**Status check:** `GET /health` returns `{ status: "ok", authenticated: true/false }`
+1. Open `http://localhost:8000/auth` (or your deployed URL) in a browser.
+2. Log in to Schwab and approve the connection.
+3. You land on a "Schwab connected!" page. Close it.
+
+**Check status.** `GET /health` returns `{ status: "ok", authenticated: true/false }`.
 
 > [!NOTE]
-> **Weekly re-auth required** — Schwab refresh tokens expire after 7 days. Return to `/auth` once a week to re-authorize. The server handles the ~30-minute access token refresh automatically — you only need to re-auth for the weekly expiry.
+> **Weekly re-auth required.** Schwab login tokens expire after 7 days. Return to `/auth` once a week. The server renews the shorter ~30-minute access token by itself.
 
----
-
-## `[ mcp client configuration ]`
-
-### claude code / claude desktop
+**Connect your assistant.** Add the server to Claude Code or Claude Desktop.
 
 ```json
 {
@@ -128,60 +83,33 @@ volumes:
 }
 ```
 
-Adjust the URL if running on a remote host or different port.
-
-### claude code cli
+Change the URL if the server runs on another machine or port. For the Claude Code command line, run this instead.
 
 ```bash
 $ claude mcp add schwab --transport http http://localhost:8000/mcp
 ```
 
----
+## `[ configuration ]`
 
-## `[ environment variables ]`
+Set these as environment variables on the container.
 
-| Variable | Required | Description |
-|---|---|---|
-| `SCHWAB_CLIENT_ID` | Yes | Client ID from developer.schwab.com |
-| `SCHWAB_CLIENT_SECRET` | Yes | Client secret from developer.schwab.com |
-| `SCHWAB_REDIRECT_URI` | Yes | OAuth callback URL (must match your app registration) |
-| `PORT` | No | Port to listen on (default: `8000`) |
-| `TOKEN_PATH` | No | Path to store OAuth tokens (default: `/data/tokens.json`) |
+| Variable | Required | What it does | Default |
+|---|---|---|---|
+| `SCHWAB_CLIENT_ID` | Yes | Client ID from developer.schwab.com | none |
+| `SCHWAB_CLIENT_SECRET` | Yes | Client secret from developer.schwab.com | none |
+| `SCHWAB_REDIRECT_URI` | Yes | OAuth callback URL (must match your app registration) | none |
+| `PORT` | No | Port to listen on | `8000` |
+| `TOKEN_PATH` | No | Where login tokens are saved | `/data/tokens.json` |
 
-Token storage defaults to the `/data` volume so tokens survive container restarts.
+Tokens live in the `/data` volume, so they survive container restarts.
 
----
+## `[ docs ]`
 
-## `[ development ]`
+- [Tools](docs/tools.md): everything the assistant can do (accounts, quotes, options, orders, transactions).
+- [Development](docs/development.md): run from source, rate limits, retries, credits.
 
-```bash
-$ npm install
-$ npm run dev    # ts-node watch mode on port 8000
-$ npm run build  # compile to dist/
-$ npm start      # run compiled output
-```
+## `[ license ]`
 
----
-
-## `[ notes ]`
-
-- **Rate limiting** — 100 requests per 60-second window (Schwab API limit)
-- **Retries** — Failed requests retry up to 3 times with exponential backoff
-- **Stateless transport** — Each `POST /mcp` request creates and tears down its own MCP server instance. No session state is held in memory between requests
-- **Token refresh** — Access tokens are refreshed every 10 minutes in the background so API calls never fail due to token expiry between the ~30-minute Schwab access token windows
-
----
-
-## `[ credits ]`
-
-- **[sudowealth/schwab-mcp](https://github.com/sudowealth/schwab-mcp)** — Original project this fork is based on. Core MCP server, tool definitions, and Schwab API integration come from there.
-- [`@sudowealth/schwab-api`](https://www.npmjs.com/package/@sudowealth/schwab-api) — TypeScript Schwab API client and OAuth implementation
-- [Anthropic MCP SDK](https://github.com/modelcontextprotocol/typescript-sdk) — MCP server transport layer
-
----
-
-**Use at your own risk.** Not financial advice.
-
----
+See [LICENSE](LICENSE).
 
 <img src="assets/fathom-footer-banner.svg" alt="Fathom Works — sound the depths before you set a course" width="100%">
